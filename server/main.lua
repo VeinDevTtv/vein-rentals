@@ -1,32 +1,13 @@
 local QBCore = nil
-local Vehicles = require('shared.vehicles')
-local Utils = require('shared.utils')
+local Vehicles = nil
+local Utils = nil
+-- Config will be loaded from shared_script in fxmanifest.lua
 local FrameworkFunctions = nil
-local Database = require('server.database')
+local Database = nil
 
 -- Active rentals tracking
 local activeRentals = {}
 local playerLoyaltyPoints = {}
-
--- Framework detection and initialization
-local function InitializeFramework()
-    if Config.Framework == 'qbx' then
-        QBCore = exports['qbx_core']:GetCoreObject()
-        FrameworkFunctions = require('server.framework.qbx')
-    elseif Config.Framework == 'qbcore' then
-        QBCore = exports['qb-core']:GetCoreObject()
-        FrameworkFunctions = require('server.framework.qbcore')
-    elseif Config.Framework == 'esx' then
-        FrameworkFunctions = require('server.framework.esx')
-    end
-    
-    if FrameworkFunctions then
-        FrameworkFunctions.Initialize()
-        Utils.DebugPrint("Server framework initialized:", Config.Framework)
-    else
-        Utils.DebugPrint("Failed to initialize server framework:", Config.Framework)
-    end
-end
 
 -- Load player rentals from database
 local function LoadPlayerRentals(source)
@@ -48,6 +29,109 @@ local function LoadPlayerLoyaltyPoints(source)
     playerLoyaltyPoints[source] = points or 0
     
     return playerLoyaltyPoints[source]
+end
+
+-- Register framework-specific events
+local function RegisterFrameworkEvents()
+    if Config.Framework == 'qbx' or Config.Framework == 'qbcore' then
+        RegisterNetEvent('QBCore:Server:OnPlayerLoaded', function()
+            local src = source
+            LoadPlayerRentals(src)
+            LoadPlayerLoyaltyPoints(src)
+        end)
+    elseif Config.Framework == 'esx' then
+        RegisterNetEvent('esx:playerLoaded', function()
+            local src = source
+            LoadPlayerRentals(src)
+            LoadPlayerLoyaltyPoints(src)
+        end)
+    end
+end
+
+-- Register framework-specific commands
+local function RegisterFrameworkCommands()
+    if Config.Framework == 'qbx' or Config.Framework == 'qbcore' then
+        RegisterCommand('rentalstats', function(source, args)
+            local src = source
+            local playerName = GetPlayerName(src)
+            local points = playerLoyaltyPoints[src] or 0
+            local activeCount = activeRentals[src] and #activeRentals[src] or 0
+            
+            if Config.Framework == 'qbx' then
+                TriggerClientEvent('QBCore:Notify', src, 'Rental Stats - Active: ' .. activeCount .. ' | Loyalty Points: ' .. points)
+            else
+                TriggerClientEvent('QBCore:Notify', src, 'Rental Stats - Active: ' .. activeCount .. ' | Loyalty Points: ' .. points)
+            end
+        end, false)
+    end
+end
+
+-- Load shared modules
+local function LoadModules()
+    -- Config is already loaded as a global from shared_script in fxmanifest.lua
+    Utils = require('shared.utils')
+    Vehicles = require('shared.vehicles')
+    
+    if not Config or not Vehicles or not Utils then
+        print("^1[ERROR] Failed to load server modules: Config=", tostring(Config), " Utils=", tostring(Utils), " Vehicles=", tostring(Vehicles), "^7")
+        return false
+    end
+    
+    -- Load database after sharing modules with it
+    TriggerEvent('vein-rentals:server:setModules', Utils)
+    Wait(100) -- Give time for event to propagate
+    
+    -- Now load database which needs Utils
+    Database = require('server.database')
+    if not Database then
+        print("^1[ERROR] Failed to load database module^7")
+        return false
+    end
+    
+    -- Register exports for other scripts to use
+    exports('GetConfig', function() return Config end)
+    exports('GetUtils', function() return Utils end)
+    exports('GetVehicles', function() return Vehicles end)
+    exports('GetDatabase', function() return Database end)
+    
+    return true
+end
+
+-- Framework detection and initialization
+local function InitializeFramework()
+    local success = LoadModules()
+    if not success then
+        print("^1[ERROR] Failed to load server modules^7")
+        return false
+    end
+    
+    -- Share modules with framework adapters
+    TriggerEvent('vein-rentals:server:setModules', Utils)
+    
+    if Config.Framework == 'qbx' then
+        QBCore = exports['qbx_core']:GetCoreObject()
+        FrameworkFunctions = require('server.framework.qbx')
+    elseif Config.Framework == 'qbcore' then
+        QBCore = exports['qb-core']:GetCoreObject()
+        FrameworkFunctions = require('server.framework.qbcore')
+    elseif Config.Framework == 'esx' then
+        FrameworkFunctions = require('server.framework.esx')
+    end
+    
+    if FrameworkFunctions then
+        FrameworkFunctions.Initialize()
+        Utils.DebugPrint("Server framework initialized:", Config.Framework)
+        
+        -- Register framework-specific events
+        RegisterFrameworkEvents()
+        -- Register framework-specific commands
+        RegisterFrameworkCommands()
+        
+        return true
+    else
+        Utils.DebugPrint("Failed to initialize server framework:", Config.Framework)
+        return false
+    end
 end
 
 -- Save rental to database
@@ -167,33 +251,12 @@ AddEventHandler('playerDropped', function()
     playerLoyaltyPoints[src] = nil
 end)
 
--- Framework specific events
-if Config.Framework == 'qbx' or Config.Framework == 'qbcore' then
-    RegisterNetEvent('QBCore:Server:OnPlayerLoaded', function()
-        local src = source
-        LoadPlayerRentals(src)
-        LoadPlayerLoyaltyPoints(src)
-    end)
-elseif Config.Framework == 'esx' then
-    RegisterNetEvent('esx:playerLoaded', function()
-        local src = source
-        LoadPlayerRentals(src)
-        LoadPlayerLoyaltyPoints(src)
-    end)
-end
-
--- Commands
-QBCore.Commands.Add('rentalstats', 'View rental statistics', {}, false, function(source, args)
-    local src = source
-    local playerName = GetPlayerName(src)
-    local points = playerLoyaltyPoints[src] or 0
-    local activeCount = activeRentals[src] and #activeRentals[src] or 0
-    
-    TriggerClientEvent('QBCore:Notify', src, 'Rental Stats - Active: ' .. activeCount .. ' | Loyalty Points: ' .. points)
-end)
-
 -- Initialize on resource start
 CreateThread(function()
     InitializeFramework()
     Database.Initialize()
+    
+    -- Register exports
+    exports('GetActiveRentals', function(source) return activeRentals[source] or {} end)
+    exports('GetPlayerLoyaltyPoints', function(source) return playerLoyaltyPoints[source] or 0 end)
 end) 

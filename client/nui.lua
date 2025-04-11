@@ -1,13 +1,14 @@
 -- NUI Message handler
 local nuiReady = false
+-- Config is loaded as a global
+local Utils = nil
+local Vehicles = nil
 
--- Export functions for NUI
-exports('GetVehicles', function()
-    return require('shared.vehicles')
-end)
-
-exports('GetUtils', function()
-    return require('shared.utils')
+-- Store module references when they are loaded
+RegisterNetEvent('vein-rentals:client:setModules', function(utils, vehicles)
+    Utils = utils
+    Vehicles = vehicles
+    -- Config is already available globally
 end)
 
 -- Initialize NUI when ready

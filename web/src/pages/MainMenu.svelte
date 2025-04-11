@@ -80,7 +80,11 @@
   
   <div class="vehicles-grid">
     {#each $vehicles as vehicle}
-      <div class="vehicle-card" on:click={() => viewVehicleDetails(vehicle.model)}>
+      <button 
+        class="vehicle-card" 
+        on:click={() => viewVehicleDetails(vehicle.model)}
+        on:keydown={(e) => e.key === 'Enter' && viewVehicleDetails(vehicle.model)}
+      >
         <div class="image-container">
           <img src={vehicle.image} alt={vehicle.name} />
         </div>
@@ -104,9 +108,9 @@
             </div>
           </div>
           
-          <button class="view-btn">View Details</button>
+          <span class="view-btn">View Details</span>
         </div>
-      </div>
+      </button>
     {/each}
   </div>
 </div>
@@ -205,6 +209,15 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s, box-shadow 0.2s;
     cursor: pointer;
+    /* Reset button styling */
+    border: none;
+    font: inherit;
+    color: inherit;
+    padding: 0;
+    margin: 0;
+    display: block;
+    width: 100%;
+    text-align: left;
   }
   
   .vehicle-card:hover {

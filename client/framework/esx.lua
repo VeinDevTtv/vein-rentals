@@ -1,21 +1,31 @@
 local ESX = {}
-local Utils = require('shared.utils')
-local Config = require('shared.config')
+local Utils = nil
+-- Config is loaded as a global
+local ESXCore = nil
+
+-- Set modules (will be called from main.lua)
+RegisterNetEvent('vein-rentals:client:setFrameworkModules', function(utils, config)
+    Utils = utils
+    -- We already have Config globally
+end)
 
 -- Initialize framework
 function ESX.Initialize()
-    Utils.DebugPrint("Initializing ESX framework adapter")
-    ESX.Core = exports['es_extended']:getSharedObject()
+    if Utils then Utils.DebugPrint("Initializing ESX framework adapter") end
+    ESXCore = exports['es_extended']:getSharedObject()
 end
 
 -- Get player data
 function ESX.GetPlayerData()
-    return ESX.Core.GetPlayerData()
+    if not ESXCore then return {} end
+    return ESXCore.GetPlayerData()
 end
 
 -- Check if player has enough money
 function ESX.CheckMoney(amount)
-    local playerData = ESX.Core.GetPlayerData()
+    if not ESXCore then return false end
+    
+    local playerData = ESXCore.GetPlayerData()
     if playerData.money >= amount then
         return true
     elseif playerData.accounts then
@@ -30,7 +40,9 @@ end
 
 -- Remove money from player
 function ESX.RemoveMoney(amount)
-    local playerData = ESX.Core.GetPlayerData()
+    if not ESXCore then return false end
+    
+    local playerData = ESXCore.GetPlayerData()
     if playerData.money >= amount then
         TriggerServerEvent('vein-rentals:server:removeMoney', 'cash', amount)
         return true
@@ -60,7 +72,8 @@ end
 
 -- Format notification for framework
 function ESX.Notify(message, type)
-    ESX.Core.ShowNotification(message)
+    if not ESXCore then return end
+    ESXCore.ShowNotification(message)
 end
 
 return ESX 

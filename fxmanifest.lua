@@ -13,16 +13,17 @@ shared_scripts {
 }
 
 client_scripts {
-    'client/main.lua',
-    'client/rentals.lua',
     'client/nui.lua',
-    'client/framework/*.lua'
+    'client/framework/*.lua',
+    'client/rentals.lua',
+    'client/main.lua'
 }
 
 server_scripts {
-    'server/main.lua',
+    '@oxmysql/lib/MySQL.lua',
+    'server/framework/*.lua',
     'server/database.lua',
-    'server/framework/*.lua'
+    'server/main.lua'
 }
 
 ui_page 'web/build/index.html'
@@ -34,6 +35,24 @@ files {
 
 lua54 'yes'
 
+-- Export modules
+exports {
+    'GetConfig',
+    'GetUtils',
+    'GetVehicles',
+    'GetActiveRentals',
+    'GetDatabase',
+    'GetQBXFramework',
+    'GetQBCoreFramework',
+    'GetESXFramework'
+}
+
+server_exports {
+    'GetActiveRentals',
+    'GetPlayerLoyaltyPoints'
+}
+
 dependencies {
-    'qbx_core'
+    'qbx_core',
+    'oxmysql'
 } 

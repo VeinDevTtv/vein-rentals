@@ -1,112 +1,109 @@
+--[[ Vein Rentals - Database Management ]]--
+
+local Utils = nil
 local Database = {}
-local Utils = require('shared.utils')
+
+-- Receive Utils module from main script
+RegisterNetEvent('vein-rentals:server:setModules', function(utils)
+    Utils = utils
+end)
+
+-- Tables
+local RENTALS_TABLE = 'vein_rentals'
+local LOYALTY_TABLE = 'vein_loyalty_points'
 
 -- Initialize database tables
 function Database.Initialize()
-    local rentalsTable = [[
-        CREATE TABLE IF NOT EXISTS vein_rentals (
-            id VARCHAR(50) PRIMARY KEY,
+    -- Create rentals table if it doesn't exist
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS ]] .. RENTALS_TABLE .. [[ (
+            id VARCHAR(20) PRIMARY KEY,
             player_id VARCHAR(50) NOT NULL,
             model VARCHAR(50) NOT NULL,
-            plate VARCHAR(50) NOT NULL,
-            start_time INTEGER NOT NULL,
-            duration INTEGER NOT NULL,
-            end_time INTEGER NOT NULL,
-            cost INTEGER NOT NULL,
-            status VARCHAR(50) DEFAULT 'active',
-            damage_fee INTEGER DEFAULT 0,
-            replacement_fee INTEGER DEFAULT 0,
-            late_fee INTEGER DEFAULT 0,
+            plate VARCHAR(10) NOT NULL,
+            start_time INT NOT NULL,
+            duration INT NOT NULL,
+            end_time INT NOT NULL,
+            cost INT NOT NULL,
+            location_index INT NOT NULL,
+            spawn_index INT NOT NULL,
+            status VARCHAR(20) DEFAULT 'active',
+            damage_fee INT DEFAULT 0,
+            replacement_fee INT DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    ]]
+    ]])
     
-    local loyaltyTable = [[
-        CREATE TABLE IF NOT EXISTS vein_loyalty (
+    -- Create loyalty points table if it doesn't exist
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS ]] .. LOYALTY_TABLE .. [[ (
             player_id VARCHAR(50) PRIMARY KEY,
-            points INTEGER DEFAULT 0,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            points INT DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
-    ]]
+    ]])
     
-    MySQL.Async.execute(rentalsTable, {}, function(rowsChanged)
-        Utils.DebugPrint("Created rentals table")
-    end)
-    
-    MySQL.Async.execute(loyaltyTable, {}, function(rowsChanged)
-        Utils.DebugPrint("Created loyalty table")
-    end)
+    Utils.DebugPrint("Database tables initialized")
 end
 
 -- Save rental to database
 function Database.SaveRental(rental)
-    local params = {
-        id = rental.id,
-        player_id = rental.playerId,
-        model = rental.model,
-        plate = rental.plate,
-        start_time = rental.startTime,
-        duration = rental.duration,
-        end_time = rental.endTime,
-        cost = rental.cost,
-        status = 'active'
-    }
-    
     local query = [[
-        INSERT INTO vein_rentals (id, player_id, model, plate, start_time, duration, end_time, cost, status)
-        VALUES (@id, @player_id, @model, @plate, @start_time, @duration, @end_time, @cost, @status)
+        INSERT INTO ]] .. RENTALS_TABLE .. [[ 
+        (id, player_id, model, plate, start_time, duration, end_time, cost, location_index, spawn_index, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
     ]]
     
-    local success = MySQL.Sync.execute(query, params)
-    return success > 0
+    local success = MySQL.insert.await(query, {
+        rental.id,
+        rental.playerId,
+        rental.model,
+        rental.plate,
+        rental.startTime,
+        rental.duration,
+        rental.endTime,
+        rental.cost,
+        rental.locationIndex,
+        rental.spawnIndex
+    })
+    
+    return success ~= nil
 end
 
--- Update rental status in database
+-- Update rental status
 function Database.UpdateRentalStatus(rentalId, status, fees)
-    local params = {
-        id = rentalId,
-        status = status
-    }
-    
-    local query = [[
-        UPDATE vein_rentals
-        SET status = @status
-    ]]
+    local query = "UPDATE " .. RENTALS_TABLE .. " SET status = ?"
+    local params = {status}
     
     if fees then
         if fees.damageFee and fees.damageFee > 0 then
-            query = query .. ", damage_fee = @damage_fee"
-            params.damage_fee = fees.damageFee
+            query = query .. ", damage_fee = ?"
+            table.insert(params, fees.damageFee)
         end
         
         if fees.replacementFee and fees.replacementFee > 0 then
-            query = query .. ", replacement_fee = @replacement_fee"
-            params.replacement_fee = fees.replacementFee
-        end
-        
-        if fees.lateFee and fees.lateFee > 0 then
-            query = query .. ", late_fee = @late_fee"
-            params.late_fee = fees.lateFee
+            query = query .. ", replacement_fee = ?"
+            table.insert(params, fees.replacementFee)
         end
     end
     
-    query = query .. " WHERE id = @id"
+    query = query .. " WHERE id = ?"
+    table.insert(params, rentalId)
     
-    local success = MySQL.Sync.execute(query, params)
-    return success > 0
+    local success = MySQL.update.await(query, params)
+    return success ~= nil
 end
 
--- Get player's active rentals
+-- Get player rentals
 function Database.GetPlayerRentals(playerId)
     local query = [[
-        SELECT * FROM vein_rentals
-        WHERE player_id = @player_id AND status = 'active'
+        SELECT * FROM ]] .. RENTALS_TABLE .. [[
+        WHERE player_id = ? AND status = 'active'
     ]]
     
-    local result = MySQL.Sync.fetchAll(query, {
-        player_id = playerId
-    })
+    local result = MySQL.query.await(query, {playerId})
     
+    -- Format to match client expectations
     if result and #result > 0 then
         local rentals = {}
         for _, rental in ipairs(result) do
@@ -118,7 +115,8 @@ function Database.GetPlayerRentals(playerId)
                 duration = rental.duration,
                 endTime = rental.end_time,
                 cost = rental.cost,
-                timeRemaining = Utils.FormatTimeRemaining(math.floor((rental.end_time - os.time()) / 60))
+                locationIndex = rental.location_index,
+                spawnIndex = rental.spawn_index
             })
         end
         return rentals
@@ -127,52 +125,39 @@ function Database.GetPlayerRentals(playerId)
     return {}
 end
 
--- Get player's loyalty points
+-- Get loyalty points
 function Database.GetLoyaltyPoints(playerId)
     local query = [[
-        SELECT points FROM vein_loyalty
-        WHERE player_id = @player_id
+        SELECT points FROM ]] .. LOYALTY_TABLE .. [[
+        WHERE player_id = ?
     ]]
     
-    local result = MySQL.Sync.fetchScalar(query, {
-        player_id = playerId
-    })
+    local result = MySQL.query.await(query, {playerId})
     
-    return result or 0
+    if result and #result > 0 then
+        return result[1].points
+    end
+    
+    -- Insert new record if player not found
+    MySQL.insert.await("INSERT INTO " .. LOYALTY_TABLE .. " (player_id, points) VALUES (?, 0)", {playerId})
+    return 0
 end
 
--- Update player's loyalty points
+-- Update loyalty points
 function Database.UpdateLoyaltyPoints(playerId, points)
     local query = [[
-        INSERT INTO vein_loyalty (player_id, points, updated_at)
-        VALUES (@player_id, @points, CURRENT_TIMESTAMP)
-        ON DUPLICATE KEY UPDATE
-        points = @points,
-        updated_at = CURRENT_TIMESTAMP
+        INSERT INTO ]] .. LOYALTY_TABLE .. [[ (player_id, points)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE points = ?
     ]]
     
-    local success = MySQL.Sync.execute(query, {
-        player_id = playerId,
-        points = points
-    })
-    
-    return success > 0
+    local success = MySQL.update.await(query, {playerId, points, points})
+    return success ~= nil
 end
 
--- Get rental statistics
-function Database.GetRentalStats()
-    local query = [[
-        SELECT
-            COUNT(*) as total_rentals,
-            SUM(cost) as total_revenue,
-            SUM(damage_fee) as total_damage_fees,
-            SUM(replacement_fee) as total_replacement_fees,
-            SUM(late_fee) as total_late_fees
-        FROM vein_rentals
-    ]]
-    
-    local result = MySQL.Sync.fetchAll(query, {})
-    return result[1]
+-- Export database module
+function GetDatabase()
+    return Database
 end
 
 return Database 

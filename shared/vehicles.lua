@@ -1,234 +1,183 @@
-local Config = {}
+--[[ Vein Rentals - Vehicle Data ]]--
 
--- Vehicle categories
-Config.VehicleCategories = {
+local Vehicles = {}
+
+-- Vehicle Categories
+Vehicles.VehicleCategories = {
     economy = {
         label = "Economy",
-        description = "Affordable vehicles for daily commuting",
-        icon = "car"
+        description = "Affordable and fuel-efficient vehicles for everyday use.",
+        icon = "car-hatchback"
     },
     luxury = {
         label = "Luxury",
-        description = "Premium vehicles for a refined driving experience",
-        icon = "car-side"
+        description = "Premium vehicles with top-tier comfort and performance.",
+        icon = "car-sports"
     },
     sports = {
         label = "Sports",
-        description = "High-performance vehicles for speed enthusiasts",
+        description = "High-performance sports cars for thrill-seekers.",
         icon = "car-sports"
     },
     utility = {
         label = "Utility",
-        description = "Versatile vehicles for work and transport",
+        description = "Practical vehicles for work and everyday utility.",
         icon = "truck"
     }
 }
 
--- Rental vehicles
-Config.RentalVehicles = {
-    -- Economy Class
+-- Vehicle Data
+Vehicles.VehicleList = {
+    -- Economy Category
     {
         name = "Asbo",
         model = "asbo",
         category = "economy",
-        price = 15000,
-        rentalPrice = 150, -- Base rental price per hour
-        description = "Compact and fuel-efficient city car",
+        rentalPrice = 75,
+        basePrice = 4500,
+        image = "https://cdn.discordapp.com/attachments/1121732742838849626/1133486132549300284/asbo.png",
+        description = "A budget compact car perfect for city driving. Good on fuel and easy to park.",
         stats = {
-            speed = 30,
-            acceleration = 25,
-            handling = 40,
-            braking = 35
-        },
-        image = "https://i.imgur.com/7Vf5W1a.png"
+            speed = 35,
+            acceleration = 30,
+            braking = 40,
+            handling = 45
+        }
     },
     {
         name = "Blista",
         model = "blista",
         category = "economy",
-        price = 18000,
-        rentalPrice = 180,
-        description = "Reliable compact hatchback with good fuel economy",
+        rentalPrice = 85,
+        basePrice = 5500,
+        image = "https://cdn.discordapp.com/attachments/1121732742838849626/1133486318486736966/blista.png",
+        description = "A reliable compact hatchback with decent performance and fuel economy.",
         stats = {
-            speed = 35,
-            acceleration = 30,
-            handling = 45,
-            braking = 40
-        },
-        image = "https://i.imgur.com/8zdQiAT.png"
+            speed = 40,
+            acceleration = 35,
+            braking = 45,
+            handling = 50
+        }
     },
     {
         name = "Dilettante",
         model = "dilettante",
         category = "economy",
-        price = 20000,
-        rentalPrice = 200,
-        description = "Eco-friendly hybrid with excellent fuel efficiency",
+        rentalPrice = 90,
+        basePrice = 6000,
+        image = "https://cdn.discordapp.com/attachments/1121732742838849626/1133486534183305297/dilettante.png",
+        description = "A hybrid vehicle with excellent fuel economy and a quiet ride.",
         stats = {
-            speed = 30,
-            acceleration = 25,
-            handling = 40,
-            braking = 35
-        },
-        image = "https://i.imgur.com/gQZ1gyd.png"
+            speed = 35,
+            acceleration = 30,
+            braking = 50,
+            handling = 45
+        }
     },
     
-    -- Luxury Class
+    -- Luxury Category
     {
         name = "Cognoscenti",
         model = "cognoscenti",
         category = "luxury",
-        price = 75000,
-        rentalPrice = 750,
-        description = "Executive sedan with premium comfort features",
+        rentalPrice = 250,
+        basePrice = 30000,
+        image = "https://cdn.discordapp.com/attachments/1121732742838849626/1133486802727436368/cognoscenti.png",
+        description = "A premium luxury sedan with a smooth ride and elegant styling.",
         stats = {
             speed = 60,
             acceleration = 55,
-            handling = 50,
-            braking = 60
-        },
-        image = "https://i.imgur.com/2QgKnUi.png"
+            braking = 65,
+            handling = 55
+        }
     },
     {
         name = "Schafter",
         model = "schafter2",
         category = "luxury",
-        price = 65000,
-        rentalPrice = 650,
-        description = "German-engineered luxury sedan with balanced performance",
+        rentalPrice = 200,
+        basePrice = 25000,
+        image = "https://cdn.discordapp.com/attachments/1121732742838849626/1133487005634273311/schafter.png",
+        description = "A stylish luxury sedan with a perfect balance of comfort and performance.",
         stats = {
             speed = 65,
             acceleration = 60,
-            handling = 60,
-            braking = 65
-        },
-        image = "https://i.imgur.com/Hr9XxXO.png"
-    },
-    {
-        name = "Oracle",
-        model = "oracle",
-        category = "luxury",
-        price = 60000,
-        rentalPrice = 600,
-        description = "Elegant coupe with a smooth ride and premium interior",
-        stats = {
-            speed = 60,
-            acceleration = 55,
-            handling = 55,
-            braking = 60
-        },
-        image = "https://i.imgur.com/AF0Aeha.png"
+            braking = 60,
+            handling = 65
+        }
     },
     
-    -- Sports Class
-    {
-        name = "Buffalo",
-        model = "buffalo",
-        category = "sports",
-        price = 85000,
-        rentalPrice = 850,
-        description = "American muscle car with aggressive styling",
-        stats = {
-            speed = 75,
-            acceleration = 70,
-            handling = 65,
-            braking = 70
-        },
-        image = "https://i.imgur.com/3AJxwJK.png"
-    },
-    {
-        name = "Elegy",
-        model = "elegy2",
-        category = "sports",
-        price = 95000,
-        rentalPrice = 950,
-        description = "Japanese-inspired sports car with excellent handling",
-        stats = {
-            speed = 80,
-            acceleration = 75,
-            handling = 80,
-            braking = 75
-        },
-        image = "https://i.imgur.com/hCOb8PU.png"
-    },
+    -- Sports Category
     {
         name = "Comet",
         model = "comet2",
         category = "sports",
-        price = 100000,
-        rentalPrice = 1000,
-        description = "Precision-engineered sports car with balanced performance",
+        rentalPrice = 350,
+        basePrice = 45000,
+        image = "https://cdn.discordapp.com/attachments/1121732742838849626/1133487169334517840/comet.png",
+        description = "A high-performance sports car with incredible handling and speed.",
         stats = {
-            speed = 85,
+            speed = 80,
+            acceleration = 85,
+            braking = 75,
+            handling = 85
+        }
+    },
+    {
+        name = "9F",
+        model = "ninef",
+        category = "sports",
+        rentalPrice = 325,
+        basePrice = 40000,
+        image = "https://cdn.discordapp.com/attachments/1121732742838849626/1133487319855730708/9f.png",
+        description = "A sleek sports car with excellent performance and German engineering.",
+        stats = {
+            speed = 75,
             acceleration = 80,
-            handling = 85,
-            braking = 80
-        },
-        image = "https://i.imgur.com/SH3Wfgu.png"
+            braking = 70,
+            handling = 80
+        }
     },
     
-    -- Utility Class
+    -- Utility Category
     {
         name = "Bison",
         model = "bison",
         category = "utility",
-        price = 45000,
-        rentalPrice = 450,
-        description = "Dependable pickup truck for work and utility",
+        rentalPrice = 150,
+        basePrice = 15000,
+        image = "https://cdn.discordapp.com/attachments/1121732742838849626/1133487447803420852/bison.png",
+        description = "A sturdy pickup truck perfect for hauling and off-road adventures.",
         stats = {
             speed = 50,
             acceleration = 45,
-            handling = 40,
-            braking = 45
-        },
-        image = "https://i.imgur.com/5pejz7Q.png"
-    },
-    {
-        name = "Surfer",
-        model = "surfer",
-        category = "utility",
-        price = 35000,
-        rentalPrice = 350,
-        description = "Classic van with spacious interior",
-        stats = {
-            speed = 35,
-            acceleration = 30,
-            handling = 35,
-            braking = 30
-        },
-        image = "https://i.imgur.com/Ftw0xR0.png"
+            braking = 40,
+            handling = 45
+        }
     },
     {
         name = "Rumpo",
         model = "rumpo",
         category = "utility",
-        price = 40000,
-        rentalPrice = 400,
-        description = "Commercial van with ample cargo space",
+        rentalPrice = 120,
+        basePrice = 12000,
+        image = "https://cdn.discordapp.com/attachments/1121732742838849626/1133487544469250189/rumpo.png",
+        description = "A spacious van ideal for moving cargo or equipment.",
         stats = {
             speed = 40,
             acceleration = 35,
-            handling = 35,
-            braking = 35
-        },
-        image = "https://i.imgur.com/4pP1Aum.png"
+            braking = 40,
+            handling = 35
+        }
     }
 }
 
--- Utility function to get vehicle by model
-Config.GetVehicleByModel = function(model)
-    for _, vehicle in ipairs(Config.RentalVehicles) do
-        if vehicle.model == model then
-            return vehicle
-        end
-    end
-    return nil
-end
+-- Vehicle Helper Functions
 
--- Utility function to get vehicles by category
-Config.GetVehiclesByCategory = function(category)
+-- Get all vehicles by category
+function Vehicles.GetVehiclesByCategory(category)
     local vehicles = {}
-    for _, vehicle in ipairs(Config.RentalVehicles) do
+    for _, vehicle in ipairs(Vehicles.VehicleList) do
         if vehicle.category == category then
             table.insert(vehicles, vehicle)
         end
@@ -236,4 +185,19 @@ Config.GetVehiclesByCategory = function(category)
     return vehicles
 end
 
-return Config 
+-- Get vehicle by model
+function Vehicles.GetVehicleByModel(model)
+    for _, vehicle in ipairs(Vehicles.VehicleList) do
+        if vehicle.model == model then
+            return vehicle
+        end
+    end
+    return nil
+end
+
+-- Export the vehicles module
+function GetVehicles()
+    return Vehicles
+end
+
+return Vehicles 

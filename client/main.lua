@@ -1,6 +1,7 @@
 local QBCore = nil
-local Vehicles = exports['vein-rentals']:GetVehicles()
-local Utils = exports['vein-rentals']:GetUtils()
+local Vehicles = nil
+local Utils = nil
+-- Config will be loaded from shared_script in fxmanifest.lua
 local FrameworkFunctions = nil
 
 -- Variables
@@ -13,8 +14,40 @@ local playerLoaded = false
 local playerData = {}
 local loyaltyPoints = 0
 
+-- Load shared modules directly using require
+local function LoadModules()
+    -- Config is already loaded as a global from shared_script in fxmanifest.lua
+    Utils = require('shared.utils')
+    Vehicles = require('shared.vehicles')
+    
+    if not Config or not Utils or not Vehicles then
+        print("^1[ERROR] Failed to load modules: Config=", tostring(Config), " Utils=", tostring(Utils), " Vehicles=", tostring(Vehicles), "^7")
+        return false
+    end
+    
+    -- Register exports for other scripts to use
+    exports('GetConfig', function() return Config end)
+    exports('GetUtils', function() return Utils end)
+    exports('GetVehicles', function() return Vehicles end)
+    exports('GetActiveRentals', function() return currentRentals end)
+    
+    -- Share modules with other client scripts
+    TriggerEvent('vein-rentals:client:setModules', Utils, Vehicles)
+    
+    return true
+end
+
 -- Framework detection and initialization
 local function InitializeFramework()
+    local success = LoadModules()
+    if not success then
+        print("^1[Error] Failed to load modules^7")
+        return false
+    end
+    
+    -- Share modules with framework adapters
+    TriggerEvent('vein-rentals:client:setFrameworkModules', Utils)
+
     if Config.Framework == 'qbx' then
         QBCore = exports['qbx_core']:GetCoreObject()
         FrameworkFunctions = require('client.framework.qbx')
@@ -29,8 +62,13 @@ local function InitializeFramework()
         FrameworkFunctions.Initialize()
         isInitialized = true
         Utils.DebugPrint("Framework initialized:", Config.Framework)
+        
+        -- Initialize rentals module
+        TriggerEvent('vein-rentals:client:initialize', Utils, Vehicles, FrameworkFunctions)
+        return true
     else
         Utils.DebugPrint("Failed to initialize framework:", Config.Framework)
+        return false
     end
 end
 
@@ -387,22 +425,32 @@ RegisterKeyMapping('openRentalMenu', 'Open Vehicle Rental Menu', 'keyboard', 'E'
 
 -- Initialization
 CreateThread(function()
-    InitializeFramework()
-    
-    -- Wait for player to be loaded
-    while not playerLoaded do
-        Wait(1000)
+    Wait(1000) -- Give time for resource to load
+    local success = InitializeFramework()
+    if success then
+        -- Initialize other components
+        SetupRentalBlips()
+        
+        -- Get player rentals
+        TriggerServerEvent('vein-rentals:server:getPlayerRentals', GetPlayerServerId(PlayerId()))
+        TriggerServerEvent('vein-rentals:server:getLoyaltyPoints', GetPlayerServerId(PlayerId()))
+    else
+        print("^1[ERROR] Failed to initialize Vein Rentals^7")
     end
-    
-    -- Setup blips
-    SetupRentalBlips()
-    
-    -- Main loop
+end)
+
+-- Main loop for rental locations and status updates
+CreateThread(function()
     while true do
-        if playerLoaded then
+        Wait(1000)
+        if isInitialized then
             CheckRentalLocations()
             UpdateRentalStatus()
         end
-        Wait(1000)
     end
-end) 
+end)
+
+-- Export functions
+exports('GetVehicles', function() return Vehicles end)
+exports('GetUtils', function() return Utils end)
+exports('GetActiveRentals', function() return currentRentals end) 

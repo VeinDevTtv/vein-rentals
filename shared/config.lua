@@ -87,4 +87,9 @@ Config.UIColors = {
     text = "#212121"
 }
 
+-- Export the config module
+function GetConfig()
+    return Config
+end
+
 return Config 
